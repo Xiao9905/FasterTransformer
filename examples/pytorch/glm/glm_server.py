@@ -21,8 +21,8 @@ sys.path.append(dir_path + "/../../..")
 from examples.pytorch.glm.utils.glm import Glm
 
 sys.setdlopenflags(sys.getdlopenflags() ^ ctypes.RTLD_GLOBAL)
-from icetk_glm_130B import _IceTokenizer
-tokenizer = _IceTokenizer()
+from glm130b_tokenization import GLM130BTokenizer
+tokenizer = GLM130BTokenizer()
 
 from utils.strategies import BaseStrategy, BeamSearchStrategy
 
@@ -134,18 +134,18 @@ def tokenize(contexts, pad = True):
         for i in range(len(pattern_list)):
             pattern = pattern_list[i]
             sub_text = text_list[i]
-            seq.extend(tokenizer.tokenize(sub_text))
-            seq.append(tokenizer.get_command(pattern))
+            seq.extend(tokenizer.encode(sub_text))
+            seq.append(tokenizer.get_special_token(pattern))
 
-        seq.extend(tokenizer.tokenize(text_list[-1]))
+        seq.extend(tokenizer.encode(text_list[-1]))
 
         if 'MASK]' not in raw_text:
-            seq += [tokenizer.get_command(generation_mask)]
+            seq += [tokenizer.get_special_token(generation_mask)]
             raw_text += ' ' + generation_mask
         if not raw_text.endswith('MASK]'):
-            seq = seq + [tokenizer.get_command('eos')]
-        seq = seq + [tokenizer.get_command('sop')]
-        return torch.IntTensor(seq), -1 if use_gmask else seq.index(tokenizer.get_command(generation_mask))
+            seq = seq + [tokenizer.get_special_token('<eos>')]
+        seq = seq + [tokenizer.get_special_token('<sop>')]
+        return torch.IntTensor(seq), -1 if use_gmask else seq.index(tokenizer.get_special_token(generation_mask))
 
     def get_ids(contexts):
         start_ids, mask_positions = zip(*[encode(c) for c in contexts])
@@ -233,7 +233,7 @@ if __name__ == "__main__":
                             token = token[:token.index(20002)]
                         if 150005 in token:
                             token = token[:token.index(150005)]
-                        res[-1].append(tokenizer.detokenize(token))
+                        res[-1].append(tokenizer.decode(token))
                 except:
                     pass
         return res
@@ -255,7 +255,7 @@ if __name__ == "__main__":
         except:
             regix = None
             
-        end_tokens = [tokenizer.get_command("eop"), tokenizer.get_command("eos")]
+        end_tokens = [tokenizer.get_special_token("<eop>"), tokenizer.get_special_token("<eos>")]
         batch_size = start_ids.shape[0]
 
         if sampling_strategy == "BaseStrategy":
